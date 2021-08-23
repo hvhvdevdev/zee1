@@ -95,6 +95,8 @@ mod tests {
         assert_eq!(config.mod_root, String::from("mods/abc"))
     }
 
+    /// --width is there but no value provided.
+    /// Should return Err.
     #[test]
     fn no_width_value() {
         let args = vec![String::from(""), String::from("-w")];
@@ -102,6 +104,8 @@ mod tests {
         assert!(config_result.is_err());
     }
 
+    /// --height is there but no value provided.
+    /// Should return Err.
     #[test]
     fn no_height_value() {
         let args = vec![String::from(""), String::from("-h")];
@@ -109,6 +113,8 @@ mod tests {
         assert!(config_result.is_err());
     }
 
+    /// --mod is there but no value provided.
+    /// Should return Err.
     #[test]
     fn no_mod_value() {
         let args = vec![String::from(""), String::from("--mod")];
@@ -116,6 +122,8 @@ mod tests {
         assert!(config_result.is_err());
     }
 
+    /// What happens when an unknown argument is passed to the command line?
+    /// Should return Err.
     #[test]
     fn unknown() {
         let args = vec![String::from(""), String::from("-unknown")];
