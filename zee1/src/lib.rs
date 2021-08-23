@@ -50,6 +50,7 @@ impl AppBase for App {
             self.audio_engine.borrow_mut().update(self)?;
             self.control_engine.borrow_mut().update(self)?;
         }
+
         //------------------------------------------------------------------------------------------
         // Game ran and quitted without any problems.
         //------------------------------------------------------------------------------------------
