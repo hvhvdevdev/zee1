@@ -65,6 +65,8 @@ impl CmdLineConfigReader {
 
 #[cfg(test)]
 mod tests {
+    /// Simple case.
+    /// Just change window width.
     #[test]
     fn simple() {
         let args = vec![String::from(""), String::from("-w"), String::from("1920")];
@@ -74,6 +76,8 @@ mod tests {
         assert_eq!(config.window_width, 1920)
     }
 
+    /// Ok when there are many arguments.
+    /// Later --width should replace earlier -width/-w
     #[test]
     fn multi() {
         let args = vec![
