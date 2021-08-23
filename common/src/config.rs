@@ -1,5 +1,6 @@
 use alloc::string::String;
 
+/// Struct for storing configuration information.
 #[derive(Debug)]
 pub struct RunConfig {
     pub window_width: u32,
