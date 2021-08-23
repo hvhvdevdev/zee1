@@ -70,9 +70,7 @@ mod tests {
     #[test]
     fn simple() {
         let args = vec![String::from(""), String::from("-w"), String::from("1920")];
-        let config = crate::config_reader::CmdLineConfigReader::new(args)
-            .read()
-            .unwrap();
+        let config = super::CmdLineConfigReader::new(args).read().unwrap();
         assert_eq!(config.window_width, 1920)
     }
 
@@ -91,9 +89,7 @@ mod tests {
             String::from("--height"),
             String::from("900"),
         ];
-        let config = crate::config_reader::CmdLineConfigReader::new(args)
-            .read()
-            .unwrap();
+        let config = super::CmdLineConfigReader::new(args).read().unwrap();
         assert_eq!(config.window_width, 1600);
         assert_eq!(config.window_height, 900);
         assert_eq!(config.mod_root, String::from("mods/abc"))
@@ -102,28 +98,28 @@ mod tests {
     #[test]
     fn no_width_value() {
         let args = vec![String::from(""), String::from("-w")];
-        let config_result = super::config_reader::CmdLineConfigReader::new(args).read();
+        let config_result = super::CmdLineConfigReader::new(args).read();
         assert!(config_result.is_err());
     }
 
     #[test]
     fn no_height_value() {
         let args = vec![String::from(""), String::from("-h")];
-        let config_result = super::config_reader::CmdLineConfigReader::new(args).read();
+        let config_result = super::CmdLineConfigReader::new(args).read();
         assert!(config_result.is_err());
     }
 
     #[test]
     fn no_mod_value() {
         let args = vec![String::from(""), String::from("--mod")];
-        let config_result = super::config_reader::CmdLineConfigReader::new(args).read();
+        let config_result = super::CmdLineConfigReader::new(args).read();
         assert!(config_result.is_err());
     }
 
     #[test]
     fn unknown() {
         let args = vec![String::from(""), String::from("-unknown")];
-        let config_result = super::config_reader::CmdLineConfigReader::new(args).read();
+        let config_result = super::CmdLineConfigReader::new(args).read();
         assert!(config_result.is_err());
     }
 }
