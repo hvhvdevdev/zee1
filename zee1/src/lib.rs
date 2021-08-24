@@ -125,25 +125,7 @@ impl RootBase for Root {
         //------------------------------------------------------------------------------------------
         self.is_running = true;
         while self.is_running {
-            //--------------------------------------------------------------------------------------
-            // Update scripting engine.
-            //--------------------------------------------------------------------------------------
-            self.script_engine.clone().lock().update(self)?;
-
-            //--------------------------------------------------------------------------------------
-            // Update video engine.
-            //--------------------------------------------------------------------------------------
-            self.video_engine.clone().lock().update(self)?;
-
-            //--------------------------------------------------------------------------------------
-            // Update video engine.
-            //--------------------------------------------------------------------------------------
-            self.audio_engine.clone().lock().update(self)?;
-
-            //--------------------------------------------------------------------------------------
-            // Update control engine.
-            //--------------------------------------------------------------------------------------
-            self.control_engine.clone().lock().update(self)?;
+            self.update_engines()?
         }
 
         //------------------------------------------------------------------------------------------
@@ -196,6 +178,31 @@ impl Root {
         // All engines are started successfully.
         //------------------------------------------------------------------------------------------
         Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /// Update all sub-engines.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    fn update_engines(&mut self) -> Result<(), ()> {
+        //--------------------------------------------------------------------------------------
+        // Update scripting engine.
+        //--------------------------------------------------------------------------------------
+        self.script_engine.clone().lock().update(self)?;
+
+        //--------------------------------------------------------------------------------------
+        // Update video engine.
+        //--------------------------------------------------------------------------------------
+        self.video_engine.clone().lock().update(self)?;
+
+        //--------------------------------------------------------------------------------------
+        // Update video engine.
+        //--------------------------------------------------------------------------------------
+        self.audio_engine.clone().lock().update(self)?;
+
+        //--------------------------------------------------------------------------------------
+        // Update control engine.
+        //--------------------------------------------------------------------------------------
+        self.control_engine.clone().lock().update(self)
     }
 }
 
@@ -268,6 +275,10 @@ mod tests {
         }
 
         impl Default for Environment {
+            ////////////////////////////////////////////////////////////////////////////////////////
+            /// Construct a default Enviroment for testing.
+            /// All engines in root will always launch and update successfully.
+            ////////////////////////////////////////////////////////////////////////////////////////
             fn default() -> Self {
                 //----------------------------------------------------------------------------------
                 // Setup mock objects.
@@ -284,6 +295,14 @@ mod tests {
                 audio_engine.expect_lauch().return_const(Ok(()));
                 control_engine.expect_lauch().return_const(Ok(()));
                 script_engine.expect_lauch().return_const(Ok(()));
+
+                //----------------------------------------------------------------------------------
+                // They should always update successfully.
+                //----------------------------------------------------------------------------------
+                video_engine.expect_update().return_const(Ok(()));
+                audio_engine.expect_update().return_const(Ok(()));
+                control_engine.expect_update().return_const(Ok(()));
+                script_engine.expect_update().return_const(Ok(()));
 
                 //----------------------------------------------------------------------------------
                 // Construct that default Enviroment.
@@ -306,12 +325,25 @@ mod tests {
         rspec::run(&rspec::given("An engine", Environment::default(), |ctx| {
             ctx.when("Just start the root with working sub-engines.", |ctx| {
                 ctx.before_all(|env| {
+                    //------------------------------------------------------------------------------
+                    // Start engines and save result.
+                    //------------------------------------------------------------------------------
                     env.result = Some(env.root.clone().lock().start_engines());
                 });
 
                 ctx.then("There is no error.", |env| {
                     assert!(env.result.unwrap().is_ok());
-                })
+                });
+
+                ctx.when("Update all engines", |ctx| {
+                    ctx.before_all(|env| {
+                        env.result = Some(env.root.clone().lock().update_engines())
+                    });
+
+                    ctx.then("There is no error.", |env| {
+                        assert!(env.result.unwrap().is_ok());
+                    });
+                });
             });
 
             ctx.when("Start the root with broken video engine...", |ctx| {
@@ -321,14 +353,21 @@ mod tests {
                     //------------------------------------------------------------------------------
                     let mut video_engine = MockVideoEngineImpl::new();
                     video_engine.expect_lauch().return_const(Err(()));
+
+                    //------------------------------------------------------------------------------
+                    // Wrap it in a Box then Mutex then Arc.
+                    //------------------------------------------------------------------------------
                     let video_engine: Box<dyn VideoEngine + Send> = Box::new(video_engine);
                     let video_engine = Arc::new(Mutex::new(video_engine));
 
                     //------------------------------------------------------------------------------
-                    // Swap it in.
+                    // Swap it into root.
                     //------------------------------------------------------------------------------
                     env.root.lock().video_engine = video_engine;
 
+                    //------------------------------------------------------------------------------
+                    // Start engines and save result.
+                    //------------------------------------------------------------------------------
                     env.result = Some(env.root.lock().start_engines());
                 });
 
