@@ -19,22 +19,27 @@
 #![no_std]
 
 extern crate alloc;
+extern crate common;
+extern crate spin;
+
 use alloc::boxed::Box;
-use alloc::rc::Rc;
-use core::cell::RefCell;
+use alloc::sync::Arc;
+use core::fmt::Debug;
+use spin::mutex::*;
 
 //--------------------------------------------------------------------------------------------------
 // "mockall" and "std" is only used for testing.
 //--------------------------------------------------------------------------------------------------
 #[cfg(test)]
-use mockall::{automock, predicate::*};
+use mockall::{mock, predicate::*};
+#[cfg(test)]
+extern crate rspec;
 #[cfg(test)]
 extern crate std;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Base trait for sub-engine traits.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#[cfg_attr(test, automock)]
 trait Engine {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     /// Start the engine.
@@ -70,7 +75,7 @@ trait ControlEngine: Engine {}
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Trait for sub-engine that handles game scripting.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-trait ScriptingEngine: Engine {}
+trait ScriptEngine: Engine {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Trait for root for sub-engines.
@@ -91,12 +96,20 @@ trait RootBase {
 /// Root for sub-engines.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 struct Root {
-    video_engine: Rc<RefCell<Box<dyn VideoEngine>>>,
-    audio_engine: Rc<RefCell<Box<dyn AudioEngine>>>,
-    scripting_engine: Rc<RefCell<Box<dyn ScriptingEngine>>>,
-    control_engine: Rc<RefCell<Box<dyn ControlEngine>>>,
+    video_engine: Arc<Mutex<Box<dyn VideoEngine + Send>>>,
+    audio_engine: Arc<Mutex<Box<dyn AudioEngine + Send>>>,
+    script_engine: Arc<Mutex<Box<dyn ScriptEngine + Send>>>,
+    control_engine: Arc<Mutex<Box<dyn ControlEngine + Send>>>,
     /// Is the game running?
     is_running: bool,
+}
+
+impl Debug for Root {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Root")
+            .field("is_running", &self.is_running)
+            .finish()
+    }
 }
 
 impl RootBase for Root {
@@ -107,45 +120,30 @@ impl RootBase for Root {
         self.start_engines()?;
 
         //------------------------------------------------------------------------------------------
-        // Game loop.
+        // Start game loop.
         // Update every sub-engines and forward errors if they should happen.
         //------------------------------------------------------------------------------------------
+        self.is_running = true;
         while self.is_running {
             //--------------------------------------------------------------------------------------
             // Update scripting engine.
             //--------------------------------------------------------------------------------------
-            self.scripting_engine
-                .clone()
-                .as_ref()
-                .borrow_mut()
-                .update(self)?;
+            self.script_engine.clone().lock().update(self)?;
 
             //--------------------------------------------------------------------------------------
             // Update video engine.
             //--------------------------------------------------------------------------------------
-            self.video_engine
-                .clone()
-                .as_ref()
-                .borrow_mut()
-                .update(self)?;
+            self.video_engine.clone().lock().update(self)?;
 
             //--------------------------------------------------------------------------------------
             // Update video engine.
             //--------------------------------------------------------------------------------------
-            self.audio_engine
-                .clone()
-                .as_ref()
-                .borrow_mut()
-                .update(self)?;
+            self.audio_engine.clone().lock().update(self)?;
 
             //--------------------------------------------------------------------------------------
             // Update control engine.
             //--------------------------------------------------------------------------------------
-            self.control_engine
-                .clone()
-                .as_ref()
-                .borrow_mut()
-                .update(self)?;
+            self.control_engine.clone().lock().update(self)?;
         }
 
         //------------------------------------------------------------------------------------------
@@ -164,16 +162,35 @@ impl RootBase for Root {
 
 impl Root {
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    /// Creates a new root.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    #[allow(dead_code)]
+    fn new(
+        video_engine: Box<dyn VideoEngine + Send>,
+        audio_engine: Box<dyn AudioEngine + Send>,
+        script_engine: Box<dyn ScriptEngine + Send>,
+        control_engine: Box<dyn ControlEngine + Send>,
+    ) -> Root {
+        Root {
+            video_engine: Arc::new(Mutex::new(video_engine)),
+            control_engine: Arc::new(Mutex::new(control_engine)),
+            audio_engine: Arc::new(Mutex::new(audio_engine)),
+            script_engine: Arc::new(Mutex::new(script_engine)),
+            is_running: false,
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     /// Start all sub-engines.
     ////////////////////////////////////////////////////////////////////////////////////////////////
     fn start_engines(&mut self) -> Result<(), ()> {
         //------------------------------------------------------------------------------------------
         // Start all sub-engines and forward errors.
         //------------------------------------------------------------------------------------------
-        self.scripting_engine.as_ref().borrow_mut().lauch()?;
-        self.control_engine.as_ref().borrow_mut().lauch()?;
-        self.audio_engine.as_ref().borrow_mut().lauch()?;
-        self.video_engine.as_ref().borrow_mut().lauch()?;
+        self.script_engine.clone().lock().lauch()?;
+        self.control_engine.clone().lock().lauch()?;
+        self.audio_engine.clone().lock().lauch()?;
+        self.video_engine.clone().lock().lauch()?;
 
         //------------------------------------------------------------------------------------------
         // All engines are started successfully.
@@ -185,11 +202,140 @@ impl Root {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+
+    //----------------------------------------------------------------------------------------------
+    // Mock preparation for video engine.
+    //----------------------------------------------------------------------------------------------
+    mock! {
+        VideoEngineImpl  {}
+        impl Engine for VideoEngineImpl {
+            fn lauch(&self) -> Result<(), ()>;
+            fn shutdown(&self) -> Result<(), ()>;
+            fn update(&mut self, app: &mut dyn RootBase) -> Result<(), ()>;
+        }
+        impl VideoEngine for VideoEngineImpl {}
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Mock preparation for audio engine.
+    //----------------------------------------------------------------------------------------------
+    mock! {
+        AudioEngineImpl  {}
+        impl Engine for AudioEngineImpl {
+            fn lauch(&self) -> Result<(), ()>;
+            fn shutdown(&self) -> Result<(), ()>;
+            fn update(&mut self, app: &mut dyn RootBase) -> Result<(), ()>;
+        }
+        impl AudioEngine for AudioEngineImpl {}
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Mock preparation for control engine.
+    //----------------------------------------------------------------------------------------------
+    mock! {
+        ControlEngineImpl  {}
+        impl Engine for ControlEngineImpl {
+            fn lauch(&self) -> Result<(), ()>;
+            fn shutdown(&self) -> Result<(), ()>;
+            fn update(&mut self, app: &mut dyn RootBase) -> Result<(), ()>;
+        }
+        impl ControlEngine for ControlEngineImpl {}
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Mock preparation for scripting engine.
+    //----------------------------------------------------------------------------------------------
+    mock! {
+        ScriptEngineImpl  {}
+        impl Engine for ScriptEngineImpl {
+            fn lauch(&self) -> Result<(), ()>;
+            fn shutdown(&self) -> Result<(), ()>;
+            fn update(&mut self, app: &mut dyn RootBase) -> Result<(), ()>;
+        }
+        impl ScriptEngine for ScriptEngineImpl {}
+    }
 
     #[test]
-    fn works() {
-        let mut mock = MockEngine::new();
-        mock.expect_lauch().return_const(Err(()));
-        assert!(mock.lauch().is_err());
+    fn bdd() {
+        //------------------------------------------------------------------------------------------
+        // Environment for rspec.
+        //------------------------------------------------------------------------------------------
+        #[derive(Debug, Clone)]
+        struct Environment {
+            root: Arc<Mutex<Box<Root>>>,
+            result: Option<Result<(), ()>>,
+        }
+
+        impl Default for Environment {
+            fn default() -> Self {
+                //----------------------------------------------------------------------------------
+                // Setup mock objects.
+                //----------------------------------------------------------------------------------
+                let mut video_engine = MockVideoEngineImpl::new();
+                let mut audio_engine = MockAudioEngineImpl::new();
+                let mut control_engine = MockControlEngineImpl::new();
+                let mut script_engine = MockScriptEngineImpl::new();
+
+                //----------------------------------------------------------------------------------
+                // They should always launch successfully.
+                //----------------------------------------------------------------------------------
+                video_engine.expect_lauch().return_const(Ok(()));
+                audio_engine.expect_lauch().return_const(Ok(()));
+                control_engine.expect_lauch().return_const(Ok(()));
+                script_engine.expect_lauch().return_const(Ok(()));
+
+                //----------------------------------------------------------------------------------
+                // Construct that default Enviroment.
+                //----------------------------------------------------------------------------------
+                Self {
+                    root: Arc::new(Mutex::new(Box::new(Root::new(
+                        Box::new(video_engine),
+                        Box::new(audio_engine),
+                        Box::new(script_engine),
+                        Box::new(control_engine),
+                    )))),
+                    result: None,
+                }
+            }
+        }
+
+        //------------------------------------------------------------------------------------------
+        // Run BDD tests.
+        //------------------------------------------------------------------------------------------
+        rspec::run(&rspec::given("An engine", Environment::default(), |ctx| {
+            ctx.when("Just start the root with working sub-engines.", |ctx| {
+                ctx.before_all(|env| {
+                    env.result = Some(env.root.clone().lock().start_engines());
+                });
+
+                ctx.then("There is no error.", |env| {
+                    assert!(env.result.unwrap().is_ok());
+                })
+            });
+
+            ctx.when("Start the root with broken video engine...", |ctx| {
+                ctx.before_all(|env| {
+                    //------------------------------------------------------------------------------
+                    // Create a mock VideoEngine that will fail to launch.
+                    //------------------------------------------------------------------------------
+                    let mut video_engine = MockVideoEngineImpl::new();
+                    video_engine.expect_lauch().return_const(Err(()));
+                    let video_engine: Box<dyn VideoEngine + Send> = Box::new(video_engine);
+                    let video_engine = Arc::new(Mutex::new(video_engine));
+
+                    //------------------------------------------------------------------------------
+                    // Swap it in.
+                    //------------------------------------------------------------------------------
+                    env.root.lock().video_engine = video_engine;
+
+                    env.result = Some(env.root.lock().start_engines());
+                });
+
+                ctx.then("It should fail.", |env| {
+                    assert!(env.result.unwrap().is_err());
+                })
+            });
+        }))
     }
 }
