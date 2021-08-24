@@ -14,13 +14,22 @@
 			"type": "cargo",
 			"command": "tarpaulin",
 			"label": "tarpaulin",
-			"group": "build",
+			"group": "build"
 		},
 		{
 			"type": "cargo",
 			"command": "clippy",
 			"label": "clippy",
-			"group": "build",
+			"group": "build"
 		},
+		{
+			"type": "cargo",
+			"command": "test",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "rust: cargo test"
+		}
 	]
 }
