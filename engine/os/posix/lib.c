@@ -1,5 +1,7 @@
-#include <GL/gl.h>
+#define NO_SDL_GLEXT
+#include <GL/glew.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
 #include <stdbool.h>
 
 /*
@@ -48,6 +50,14 @@ bool Zee1_InitVideo() {
      */
 
     if (context == NULL) {
+        return false;
+    }
+
+    /*
+     * ─── GL EXTENSIONS ──────────────────────────────────────────────────────────────
+     */
+
+    if (glewInit() != GLEW_OK) {
         return false;
     }
 

@@ -15,4 +15,5 @@ fn main() {
     println!("cargo:rustc-link-lib=static=Zee1_Posix");
     println!("cargo:rustc-link-lib=SDL2");
     println!("cargo:rustc-link-lib=GL");
+    println!("cargo:rustc-link-lib=GLEW");
 }
