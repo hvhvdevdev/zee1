@@ -9,7 +9,7 @@
 
 bool Zee1_InitVideo() {
     /*
-     * ─── INIT SDL VIDEO SUBSYSTEM ────────────────────────────────────
+     * ─── INIT SDL ───────────────────────────────────────────────────────────────────
      */
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
