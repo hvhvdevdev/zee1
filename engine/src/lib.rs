@@ -51,6 +51,8 @@ pub mod video;
 //
 
 extern crate alloc;
+#[macro_use]
+extern crate derive_new;
 
 use alloc::string::String;
 
@@ -70,7 +72,7 @@ trait Root {}
 // ─── TRAIT GAME ─────────────────────────────────────────────────────────────────
 //
 
-trait Game {
+pub trait Game {
     fn play() -> Result<(), String>;
 }
 
@@ -78,7 +80,7 @@ trait Game {
 // ─── TRAIT SERVICE ──────────────────────────────────────────────────────────────
 //
 
-trait Service {
+pub trait Service {
     //
     // ─── START THE SERVICE ──────────────────────────────────────────────────────────
     //
