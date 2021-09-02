@@ -5,5 +5,13 @@ edition = "2018"
 
 [dependencies]
 spin = "0.9.2"
-mockall = "0.10.2"
+libc = "*"
+derive-new = "0.5"
+
+[build-dependencies]
+cmake = "0.1.45"
+
+[dev-dependencies]
 fluid = "0.4.1"
+speculate = "0.1"
+mockall = "0.10.2"
