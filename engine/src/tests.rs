@@ -14,6 +14,7 @@
 // ────────────────────────────────────────────────────────────────
 //
 
+extern crate libc;
 extern crate std;
 
 use fluid::prelude::*;
@@ -51,19 +52,6 @@ impl Drop for CoreImplTest {
 //
 
 #[session]
-impl CoreImplTest {
-    //
-    // ─── ADD TWO NUMBERS ─────────────────────────────────────────────
-    //
-
-    #[theory]
-    #[case(1, 2, 3)]
-    #[case(2, 3, 5)]
-    #[case(-3, 2, -1)]
-    #[case(-1,-9,-10)]
-    fn one_plus_one(self, x: i32, y: i32, sum: i32) {
-        (x + y).should().be_equal_to(sum);
-    }
-}
+impl CoreImplTest {}
 
 // ────────────────────────────────────────────────────────────────────────────────
