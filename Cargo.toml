@@ -1,2 +1,2 @@
 [workspace]
-members = ["./engine"]
+members = ["./engine","./game"]
