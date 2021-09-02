@@ -64,13 +64,7 @@ use alloc::string::String;
 // ─── TRAIT CORE ─────────────────────────────────────────────────────────────────
 //
 
-trait Core {
-    //
-    // ─── START THE CORE ─────────────────────────────────────────────────────────────
-    //
-
-    fn start() -> Result<(), String>;
-}
+trait Root {}
 
 //
 // ─── TRAIT GAME ─────────────────────────────────────────────────────────────────
@@ -78,6 +72,30 @@ trait Core {
 
 trait Game {
     fn play() -> Result<(), String>;
+}
+
+//
+// ─── TRAIT SERVICE ──────────────────────────────────────────────────────────────
+//
+
+trait Service {
+    //
+    // ─── START THE SERVICE ──────────────────────────────────────────────────────────
+    //
+
+    fn start(&self) -> Result<(), String>;
+
+    //
+    // ─── STOP THE SERVICE ───────────────────────────────────────────────────────────
+    //
+
+    fn stop(&self) -> Result<(), String>;
+
+    //
+    // ─── UPDATE THE SERVICE ─────────────────────────────────────────────────────────
+    //
+
+    fn update(&self, delta: f32) -> Result<(), String>;
 }
 
 //
@@ -102,11 +120,7 @@ struct CoreImpl {}
 // ─── IMPLEMENTS CORE FOR CORE IMPL ──────────────────────────────────────────────
 //
 
-impl Core for CoreImpl {
-    fn start() -> Result<(), String> {
-        todo!()
-    }
-}
+impl Root for CoreImpl {}
 
 //
 // ──────────────────────────────────────────────────────────── VI ──────────
